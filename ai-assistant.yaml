@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Full AI Assistant Stack with 3 Lambda Functions and API Gateway
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: S3 bucket to store generated diagrams and Lambda packages
+
+Resources:
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AIAssistantLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+        - PolicyName: AllowS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${S3BucketName}/*
+        - PolicyName: AllowBedrockInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: '*'
+        - PolicyName: AllowSecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: '*'
+
+  WellArchitectedLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: well-architected-query
+      Handler: well_architected_query.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 15
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: lambda/well_architected_query.zip
+
+  CodeGenLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: code-generation
+      Handler: code_generation.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 15
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: lambda/code_generation.zip
+
+  DiagramLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: generate-diagram
+      Role: !GetAtt LambdaExecutionRole.Arn
+      PackageType: Image
+      Code:
+        ImageUri: <REPLACE_WITH_ECR_IMAGE_URI>
+      Timeout: 30
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref S3BucketName
+
+  AIAssistantApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: AIAssistantAPI
+
+  RootResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AIAssistantApi
+      ParentId: !GetAtt AIAssistantApi.RootResourceId
+      PathPart: query
+
+  LambdaMethodWellArch:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AIAssistantApi
+      ResourceId: !Ref RootResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WellArchitectedLambda.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  LambdaMethodCodeGen:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AIAssistantApi
+      ResourceId: !Ref RootResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CodeGenLambda.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  LambdaMethodDiagram:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AIAssistantApi
+      ResourceId: !Ref RootResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DiagramLambda.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+Outputs:
+  APIBaseURL:
+    Description: Base URL of the API Gateway
+    Value: !Sub "https://${AIAssistantApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/query"
+
+  DiagramLambdaECRImageNote:
+    Description: Replace <REPLACE_WITH_ECR_IMAGE_URI> with your Docker image URI containing Graphviz + diagrams
