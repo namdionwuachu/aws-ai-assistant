@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.zip
+venv/
+.DS_Store
+.streamlit/
+lambda_packages/*.zip
