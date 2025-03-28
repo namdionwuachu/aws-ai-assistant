@@ -5,8 +5,9 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate
 
-BUCKET = "ai-aws-assistant"
-INDEX_PREFIX = "wellarch-index"
+# Read from environment variables (no defaults)
+BUCKET = os.environ["VECTOR_BUCKET"]
+INDEX_PREFIX = os.environ["VECTOR_PREFIX"]
 INDEX_LOCAL_PATH = "/tmp/wellarch_index"
 
 PROMPT_TEMPLATE = """Use the following AWS Well-Architected documentation to answer the question.
@@ -24,7 +25,7 @@ def download_index_from_s3():
 
 def lambda_handler(event, context):
     try:
-        query = event["queryStringParameters"].get("query")
+        query = event.get("queryStringParameters", {}).get("query")
         if not query:
             return {"statusCode": 400, "body": json.dumps({"error": "Missing query"})}
 
@@ -72,5 +73,4 @@ def lambda_handler(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
         }
-
 
