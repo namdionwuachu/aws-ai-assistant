@@ -1,109 +1,103 @@
-# AI Assistant Stack Deployment
+AI Assistant Stack Deployment
 
-This project deploys a complete AI Assistant solution using AWS CloudFormation, Lambda, API Gateway, and Docker containers.
+This project deploys a complete AI Assistant solution using AWS CloudFormation, Lambda (both ZIP and Docker), API Gateway, and supporting AWS services.
 
-## 📁 Project Structure
+📁 Project Structure
 
-```
-ai-assistant/
-├── diagram_lambda/
-│   ├── Dockerfile
-│   ├── app.py
-│   └── requirements.txt
-├── lambda_packages/
-│   ├── well_architected_query.py
-│   └── code_generation.py
-├── frontend/
-│   ├── app.py
-│   └── requirements.txt
-├── ai-assistant.yaml
-├── README.md
-```
+.
+├── diagram_lambda/            # Docker-based Lambda: architecture diagram generator
+├── frontend/                  # Streamlit UI for user interactions
+├── lambda_packages/           # Lightweight ZIP Lambda (e.g. code_generation)
+├── lambda_well_arch/          # Docker-based Lambda: well-architected RAG logic
+├── pdfs/                      # Source documents (e.g. WAF PDFs) for ingestion
+├── wellarch_index/            # FAISS vector store index used by well_arch Lambda
+├── ai-assistant.yaml          # CloudFormation template
+├── README.md                  # Project overview and deployment instructions
+└── .gitignore                 # Git exclusions
 
-## ✅ Features
+✅ Features
 
-- 3 Lambda functions:
-  - `well-architected-query` (ZIP)
-  - `code-generation` (ZIP)
-  - `generate-diagram` (Docker container)
-- S3 bucket for:
-  - Lambda packages
-  - Generated architecture diagrams
-- API Gateway with CORS
-- IAM role with permissions for S3, logs, Secrets Manager, and Bedrock
+1 ZIP-based Lambda function:
 
----
+code-generation — generates code using HuggingFace API
 
-## 🚀 Deployment Steps
+2 Docker-based Lambda functions (ECR):
 
-### 1. Package Lambda Functions
+well-architected-query — answers Well-Architected Framework queries
 
-```bash
+generate-diagram — produces AWS architecture diagrams
+
+Other features:
+
+S3 bucket for Lambda ZIP packages and architecture diagram storage
+
+REST API via API Gateway with CORS support
+
+IAM roles with access to logs, S3, Bedrock, and Secrets Manager
+
+🚀 Deployment Steps
+
+1. Package the ZIP Lambda
+
 cd lambda_packages
-zip well_architected_query.zip well_architected_query.py
 zip code_generation.zip code_generation.py
-
-aws s3 cp well_architected_query.zip s3://<your-bucket-name>/lambda/
 aws s3 cp code_generation.zip s3://<your-bucket-name>/lambda/
-```
 
-### 2. Build & Push Docker Image
+2. Build & Push Docker Images
 
-```bash
+Well-Architected Query
+
+cd lambda_well_arch
+docker build -t well-architected-query .
+docker tag well-architected-query:latest <account-id>.dkr.ecr.<region>.amazonaws.com/well-architected-query:latest
+docker push <account-id>.dkr.ecr.<region>.amazonaws.com/well-architected-query:latest
+
+Diagram Generator
+
 cd diagram_lambda
 docker build -t diagram-lambda .
-
-aws ecr create-repository --repository-name diagram-lambda
-aws ecr get-login-password | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<region>.amazonaws.com
-
 docker tag diagram-lambda:latest <account-id>.dkr.ecr.<region>.amazonaws.com/diagram-lambda:latest
 docker push <account-id>.dkr.ecr.<region>.amazonaws.com/diagram-lambda:latest
-```
 
-### 3. Deploy the Stack
+3. Deploy CloudFormation Stack
 
-```bash
 aws cloudformation deploy \
   --template-file ai-assistant.yaml \
   --stack-name AIAssistantStack \
   --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides S3BucketName=<your-bucket-name>
-```
+  --parameter-overrides \
+    S3BucketName=<your-bucket-name> \
+    WellArchitectedImageUri=<ecr-uri-for-well-architected> \
+    DiagramLambdaImageUri=<ecr-uri-for-diagram-lambda>
 
----
-
-## 🖥️ Streamlit Frontend
+🖥️ Streamlit Frontend
 
 To run the frontend locally:
 
-```bash
 cd frontend
 pip install -r requirements.txt
 streamlit run app.py
-```
 
-### 🔧 Update `app.py` with your API Gateway URL
+🔧 Update app.py with your API Gateway URL
 
-Open `frontend/app.py` and replace this line:
+Replace this line:
 
-```python
 endpoint = "https://<your-api-id>.execute-api.<region>.amazonaws.com/Prod/query"
-```
 
-With your actual API Gateway endpoint from:
-- CloudFormation Outputs
-- API Gateway Console > Stages > Prod
+With your actual API Gateway endpoint found in:
 
----
+CloudFormation Outputs
 
-## 🔍 Example API Test
+API Gateway Console → Stages → Prod
 
-```bash
+🔍 Example API Test
+
 curl -X PUT "https://<your-api-id>.execute-api.<region>.amazonaws.com/Prod/query?query=Draw EC2 > S3 > RDS"
-```
 
----
+📬 Questions?
 
-## 📬 Questions?
+Open an issue or reach out — happy to help. Happy building! 🚀
 
-Open an issue or reach out. Happy building! 🚀
+📝 License
+
+This project is licensed under the MIT License.
