@@ -1,3 +1,4 @@
+
 AI Assistant Stack Deployment
 
 This project deploys a complete AI Assistant solution using AWS CloudFormation, Lambda (both ZIP and Docker), API Gateway, and supporting AWS services.
@@ -101,3 +102,5 @@ Open an issue or reach out — happy to help. Happy building! 🚀
 📝 License
 
 This project is licensed under the MIT License.
+
+Feel free to use, modify, and distribute it. A copy of the license is included in the repository.
