@@ -4,7 +4,15 @@ Description: Full AI Assistant Stack with 3 Lambda Functions and API Gateway
 Parameters:
   S3BucketName:
     Type: String
-    Description: S3 bucket to store generated diagrams and Lambda packages
+    Description: S3 bucket to store Lambda packages
+
+  WellArchitectedImageUri:
+    Type: String
+    Description: ECR image URI for the well-architected-query Lambda
+
+  DiagramLambdaImageUri:
+    Type: String
+    Description: ECR image URI for the generate-diagram Lambda
 
 Resources:
 
@@ -61,13 +69,11 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: well-architected-query
-      Handler: well_architected_query.lambda_handler
-      Runtime: python3.9
       Role: !GetAtt LambdaExecutionRole.Arn
-      Timeout: 15
+      PackageType: Image
       Code:
-        S3Bucket: !Ref S3BucketName
-        S3Key: lambda/well_architected_query.zip
+        ImageUri: !Ref WellArchitectedImageUri
+      Timeout: 30
 
   CodeGenLambda:
     Type: AWS::Lambda::Function
@@ -88,7 +94,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       PackageType: Image
       Code:
-        ImageUri: <REPLACE_WITH_ECR_IMAGE_URI>
+        ImageUri: !Ref DiagramLambdaImageUri
       Timeout: 30
       Environment:
         Variables:
@@ -160,4 +166,5 @@ Outputs:
     Value: !Sub "https://${AIAssistantApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/query"
 
   DiagramLambdaECRImageNote:
-    Description: Replace <REPLACE_WITH_ECR_IMAGE_URI> with your Docker image URI containing Graphviz + diagrams
+    Description: Provide DiagramLambdaImageUri and WellArchitectedImageUri as parameters during deployment
+
