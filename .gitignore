@@ -1,7 +1,7 @@
+venv/
 __pycache__/
 *.pyc
-*.zip
-venv/
 .DS_Store
-.streamlit/
-lambda_packages/*.zip
+*.egg-info/
+*.log
+python/lib/
