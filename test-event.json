@@ -1,0 +1,7 @@
+{
+  "queryStringParameters": {
+    "query": "generate a Fibonacci sequence",
+    "language": "python"
+  }
+}
+
