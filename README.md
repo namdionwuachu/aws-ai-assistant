@@ -1,103 +1,88 @@
-AI Assistant Stack Deployment
+# 🧠 AWS Solution Architect AI Assistant
 
-This project deploys a complete AI Assistant solution using AWS CloudFormation, Lambda (both ZIP and Docker), API Gateway, and supporting AWS services.
+An intelligent assistant powered by AWS Lambda, Amazon Bedrock, and FAISS to help solution architects answer questions using the Well-Architected Framework and other AWS reference materials.
 
-📁 Project Structure
+---
 
-.
-├── diagram_lambda/            # Docker-based Lambda: architecture diagram generator
-├── frontend/                  # Streamlit UI for user interactions
-├── lambda_packages/           # Lightweight ZIP Lambda (e.g. code_generation)
-├── lambda_well_arch/          # Docker-based Lambda: well-architected RAG logic
-├── pdfs/                      # Source documents (e.g. WAF PDFs) for ingestion
-├── wellarch_index/            # FAISS vector store index used by well_arch Lambda
-├── ai-assistant.yaml          # CloudFormation template
-├── README.md                  # Project overview and deployment instructions
-└── .gitignore                 # Git exclusions
+## 🚀 Features
 
-✅ Features
+- 📄 Retrieves insights from AWS PDFs (Well-Architected Framework, whitepapers, etc.)
+- ⚙️ Serverless backend using AWS Lambda (Python)
+- 🧠 Retrieval-Augmented Generation (RAG) using FAISS
+- 🖼️ Auto-generates AWS architecture diagrams using Diagrams + Graphviz
+- 🌐 Optional frontend for querying the assistant
 
-1 ZIP-based Lambda function:
+---
 
-code-generation — generates code using HuggingFace API
+## 📁 Project Structure
 
-2 Docker-based Lambda functions (ECR):
+```plaintext
+aws-solution-architect-ai-assistant/
+│
+├── README.md                      # Project overview and setup instructions
+├── ai-assistant.yaml             # CloudFormation or CDK-generated deployment template
+├── requirements.txt              # Python dependencies
+├── test-event.json               # Sample input for Lambda test
+├── response.json                 # Example response from the assistant
+├── venv/                         # Local Python virtual environment
+│
+├── pdfs/                         # Source documents (e.g., AWS whitepapers, frameworks)
+│   └── wellarchitected_framework.pdf
+│
+├── wellarch_index/               # FAISS index files for fast retrieval
+│   ├── index.faiss
+│   └── index.pkl
+│
+├── code_lambda/                  # General-purpose Lambda code
+│   └── code_generation.py        # Builds FAISS index from PDFs
+│
+├── lambda_well_arch/             # Main Lambda for Well-Architected Q&A
+│   ├── app.py                    # Lambda entry point
+│   └── utils.py                  # Helper functions for FAISS, embeddings, etc.
+│
+├── diagram_lambda/               # Lambda to generate AWS architecture diagrams
+│   └── generate_diagram.py
+│
+└── frontend/                     # Optional web-based UI to interact with assistant
+    ├── index.html
+    └── app.js
+🛠️ Setup
 
-well-architected-query — answers Well-Architected Framework queries
+1. Set up a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-generate-diagram — produces AWS architecture diagrams
+2. Build FAISS Index
+python code_lambda/code_generation.py
+This will:
 
-Other features:
-
-S3 bucket for Lambda ZIP packages and architecture diagram storage
-
-REST API via API Gateway with CORS support
-
-IAM roles with access to logs, S3, Bedrock, and Secrets Manager
-
-🚀 Deployment Steps
-
-1. Package the ZIP Lambda
-
-cd lambda_packages
-zip code_generation.zip code_generation.py
-aws s3 cp code_generation.zip s3://<your-bucket-name>/lambda/
-
-2. Build & Push Docker Images
-
-Well-Architected Query
-
-cd lambda_well_arch
-docker build -t well-architected-query .
-docker tag well-architected-query:latest <account-id>.dkr.ecr.<region>.amazonaws.com/well-architected-query:latest
-docker push <account-id>.dkr.ecr.<region>.amazonaws.com/well-architected-query:latest
-
-Diagram Generator
-
-cd diagram_lambda
-docker build -t diagram-lambda .
-docker tag diagram-lambda:latest <account-id>.dkr.ecr.<region>.amazonaws.com/diagram-lambda:latest
-docker push <account-id>.dkr.ecr.<region>.amazonaws.com/diagram-lambda:latest
-
-3. Deploy CloudFormation Stack
-
+Read PDF files from pdfs/
+Use Sentence Transformers to create embeddings
+Save FAISS index in wellarch_index/
+3. Deploy Lambda with CloudFormation
 aws cloudformation deploy \
   --template-file ai-assistant.yaml \
-  --stack-name AIAssistantStack \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    S3BucketName=<your-bucket-name> \
-    WellArchitectedImageUri=<ecr-uri-for-well-architected> \
-    DiagramLambdaImageUri=<ecr-uri-for-diagram-lambda>
+  --stack-name ai-assistant-stack \
+  --capabilities CAPABILITY_NAMED_IAM
+Make sure required Lambda permissions and Bedrock access are set up properly.
 
-🖥️ Streamlit Frontend
+4. Test the Lambda Locally
+You can simulate a query with:
 
-To run the frontend locally:
+python lambda_well_arch/app.py
+And use test-event.json to mock the input event.
 
-cd frontend
-pip install -r requirements.txt
-streamlit run app.py
+💡 Future Enhancements
 
-🔧 Update app.py with your API Gateway URL
+🔄 Vector store swap (e.g., OpenSearch, Pinecone)
+🧠 Add more LLM agents (e.g., budgeting, compliance, migration)
+📊 Visual analytics for query tracking
+✨ Improved frontend with chat history and filters
+👨‍💻 Author
 
-Replace this line:
+Namdi Onwuachu — LinkedIn | Cloud AI Nexus
 
-endpoint = "https://<your-api-id>.execute-api.<region>.amazonaws.com/Prod/query"
+📄 License
 
-With your actual API Gateway endpoint found in:
-
-CloudFormation Outputs
-
-API Gateway Console → Stages → Prod
-
-🔍 Example API Test
-
-curl -X PUT "https://<your-api-id>.execute-api.<region>.amazonaws.com/Prod/query?query=Draw EC2 > S3 > RDS"
-
-📬 Questions?
-
-Open an issue or reach out — happy to help. Happy building! 🚀
-
-📝 License
-
-This project is licensed under the MIT License.
+MIT
