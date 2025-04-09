@@ -1,7 +1,0 @@
-langchain
-langchain-community
-faiss-cpu
-sentence-transformers
-boto3
-pypdf
-
